@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  SELLER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id             String       @id @default(cuid()) @map("_id")
+  name           String
+  email          String       @unique
+  passwordHash   String
+  role           Role         @default(CUSTOMER)
+  phone          String?
+  avatar         String?
+  status         UserStatus   @default(ACTIVE)
+  products       Product[]
+  orders         Order[]      @relation("CustomerOrders")
+  reviews        Review[]
+  wishlist       Wishlist[]
+  cart           Cart?
+  addresses      Address[]
+  notifications  Notification[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model EmailOtp {
+  id         String   @id @default(cuid()) @map("_id")
+  email      String
+  codeHash   String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  attempts   Int      @default(0)
+
+  @@index([email, createdAt])
+}
+
+model Category {
+  id          String    @id @default(cuid()) @map("_id")
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+}
+
+model Product {
+  id              String        @id @default(cuid()) @map("_id")
+  sellerId        String
+  categoryId      String
+  name            String
+  slug            String        @unique
+  description     String
+  price           Float
+  discount        Float         @default(0)
+  stock           Int           @default(0)
+  sku             String        @unique
+  brand           String?
+  status          ProductStatus @default(DRAFT)
+  rejectionReason String?
+  seller          User          @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  category        Category      @relation(fields: [categoryId], references: [id])
+  images          ProductImage[]
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  reviews         Review[]
+  wishlists       Wishlist[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model ProductImage {
+  id        String  @id @default(cuid()) @map("_id")
+  productId String
+  url       String
+  alt       String?
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Cart {
+  id        String     @id @default(cuid()) @map("_id")
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String  @id @default(cuid()) @map("_id")
+  cartId    String
+  productId String
+  quantity  Int     @default(1)
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  @@unique([cartId, productId])
+}
+
+model Address {
+  id           String @id @default(cuid()) @map("_id")
+  userId       String
+  name         String
+  phone        String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  postalCode   String
+  country      String @default("India")
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id            String        @id @default(cuid()) @map("_id")
+  customerId    String
+  totalAmount   Float
+  discount      Float         @default(0)
+  tax           Float         @default(0)
+  shippingFee   Float         @default(0)
+  finalAmount   Float
+  paymentStatus PaymentStatus @default(PENDING)
+  orderStatus   OrderStatus   @default(PENDING)
+  shippingAddress String
+  customer      User          @relation("CustomerOrders", fields: [customerId], references: [id])
+  items         OrderItem[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model OrderItem {
+  id        String  @id @default(cuid()) @map("_id")
+  orderId   String
+  productId String
+  sellerId  String
+  quantity  Int
+  price     Float
+  subtotal  Float
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Review {
+  id        String   @id @default(cuid()) @map("_id")
+  productId String
+  customerId String
+  rating    Int
+  comment   String?
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customer  User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Wishlist {
+  id         String  @id @default(cuid()) @map("_id")
+  customerId String
+  productId  String
+  customer   User    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  @@unique([customerId, productId])
+}
+
+model Notification {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}

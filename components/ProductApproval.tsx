@@ -1,0 +1,7 @@
+"use client";
+import { useState } from "react";
+export default function ProductApproval({product}:any){
+ const [reason,setReason]=useState(""); const [busy,setBusy]=useState(false);
+ async function act(action:string){setBusy(true);await fetch(`/api/admin/products/${product.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,rejectionReason:reason})});location.reload();}
+ return <div className="card"><div className="grid grid-2"><div><img className="product-img" src={product.images[0]?.url||"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800"} alt={product.name}/></div><div><span className="badge">{product.status}</span><h2>{product.name}</h2><p>{product.description}</p><p><b>Seller:</b> {product.seller.name} ({product.seller.email})</p><p><b>Category:</b> {product.category.name} · <b>Price:</b> ₹{product.price} · <b>Stock:</b> {product.stock}</p><textarea placeholder="Rejection reason (required when rejecting)" value={reason} onChange={e=>setReason(e.target.value)}/><div style={{display:"flex",gap:10,marginTop:10}}><button className="btn btn-primary" disabled={busy} onClick={()=>act("APPROVE")}>Approve</button><button className="btn btn-danger" disabled={busy||!reason.trim()} onClick={()=>act("REJECT")}>Reject</button></div></div></div></div>;
+}
